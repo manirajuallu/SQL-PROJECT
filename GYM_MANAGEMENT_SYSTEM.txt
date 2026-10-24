@@ -1,0 +1,1303 @@
+# GYM MANAGEMENT SYSTEM – MYSQL PROJECT
+
+-- =====================================================
+-- PART 1: DATABASE AND TABLES CREATION
+-- =====================================================
+
+-- Delete the existing database if it already exists.
+-- WARNING: This deletes all existing data in this database.
+DROP DATABASE IF EXISTS gym_management_system;
+
+-- Create a new database for the Gym Management System.
+CREATE DATABASE gym_management_system;
+
+-- Select the database to use.
+USE gym_management_system;
+
+
+-- -----------------------------------------------------
+-- TABLE 1: MEMBERS
+-- Purpose: Store gym members' personal information.
+-- -----------------------------------------------------
+
+CREATE TABLE members (
+    member_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique ID for each member
+    member_name VARCHAR(100),                 -- Name of the member
+    gender VARCHAR(10),                       -- Gender of the member
+    phone VARCHAR(15),                        -- Contact number
+    city VARCHAR(50),                         -- City where the member lives
+    join_date DATE                            -- Date the member joined the gym
+);
+
+
+-- -----------------------------------------------------
+-- TABLE 2: TRAINERS
+-- Purpose: Store gym trainers' information.
+-- -----------------------------------------------------
+
+CREATE TABLE trainers (
+    trainer_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique ID for each trainer
+    trainer_name VARCHAR(100),                 -- Name of the trainer
+    specialization VARCHAR(100),               -- Trainer's area of expertise
+    phone VARCHAR(15)                          -- Trainer's contact number
+);
+
+
+-- -----------------------------------------------------
+-- TABLE 3: MEMBERSHIP PLANS
+-- Purpose: Store available gym membership plans and fees.
+-- -----------------------------------------------------
+
+CREATE TABLE membership_plans (
+    plan_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique ID for each plan
+    plan_name VARCHAR(50),                  -- Name of the plan
+    duration_months INT,                    -- Duration of the plan in months
+    fee DECIMAL(10,2)                       -- Membership fee
+);
+
+
+-- -----------------------------------------------------
+-- TABLE 4: MEMBERSHIPS
+-- Purpose: Connect members, plans, and trainers.
+-- -----------------------------------------------------
+
+CREATE TABLE memberships (
+    membership_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique membership ID
+    member_id INT,                                -- ID of the member
+    plan_id INT,                                  -- ID of the selected plan
+    trainer_id INT,                               -- ID of the assigned trainer
+    start_date DATE,                              -- Membership starting date
+    end_date DATE,                                -- Membership ending date
+
+    -- Connect the membership to an existing member.
+    FOREIGN KEY (member_id) REFERENCES members(member_id),
+
+    -- Connect the membership to an existing membership plan.
+    FOREIGN KEY (plan_id) REFERENCES membership_plans(plan_id),
+
+    -- Connect the membership to an existing trainer.
+    FOREIGN KEY (trainer_id) REFERENCES trainers(trainer_id)
+);
+
+
+-- -----------------------------------------------------
+-- TABLE 5: PAYMENTS
+-- Purpose: Store payments made by gym members.
+-- -----------------------------------------------------
+
+CREATE TABLE payments (
+    payment_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique payment ID
+    member_id INT,                             -- ID of the member making payment
+    amount DECIMAL(10,2),                      -- Amount paid by the member
+    payment_date DATE,                         -- Date of payment
+
+    -- Allow only Cash, UPI, or Card as payment methods.
+    payment_mode ENUM('Cash','UPI','Card'),
+
+    -- Connect the payment to an existing member.
+    FOREIGN KEY (member_id) REFERENCES members(member_id)
+);
+
+
+-- -----------------------------------------------------
+-- TABLE 6: ATTENDANCE
+-- Purpose: Record members' daily attendance.
+-- -----------------------------------------------------
+
+CREATE TABLE attendance (
+    attendance_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique attendance ID
+    member_id INT,                                -- ID of the member
+    attendance_date DATE,                         -- Date of attendance
+
+    -- Allow only Present or Absent as attendance status.
+    status ENUM('Present','Absent'),
+
+    -- Connect attendance records to an existing member.
+    FOREIGN KEY (member_id) REFERENCES members(member_id)
+);
+
+
+-- =====================================================
+-- PART 2: INSERTING SAMPLE DATA
+-- =====================================================
+
+-- Insert five sample members into the members table.
+INSERT INTO members
+    (member_name, gender, phone, city, join_date)
+VALUES
+    ('Rahul Sharma','Male','9876543210','Mumbai','2024-01-10'),
+    ('Priya Verma','Female','9123456789','Delhi','2024-02-15'),
+    ('Amit Patel','Male','9988776655','Ahmedabad','2024-03-01'),
+    ('Sneha Reddy','Female','8877665544','Hyderabad','2024-03-08'),
+    ('Vikram Singh','Male','7766554433','Mumbai','2024-04-10');
+
+
+-- Insert three sample trainers and their specializations.
+INSERT INTO trainers
+    (trainer_name, specialization, phone)
+VALUES
+    ('Rohit Kumar','Weight Training','9871111111'),
+    ('Neha Singh','Yoga','9872222222'),
+    ('Arjun Rao','Cardio Fitness','9873333333');
+
+
+-- Insert four membership plans with different durations and fees.
+INSERT INTO membership_plans
+    (plan_name, duration_months, fee)
+VALUES
+    ('Monthly',1,1000),
+    ('Quarterly',3,2500),
+    ('Half-Yearly',6,4500),
+    ('Yearly',12,8000);
+
+
+-- Assign membership plans and trainers to five members.
+INSERT INTO memberships
+    (member_id, plan_id, trainer_id, start_date, end_date)
+VALUES
+    (1,4,1,'2024-01-10','2025-01-09'),
+    (2,2,2,'2024-02-15','2024-05-14'),
+    (3,1,1,'2024-03-01','2024-03-31'),
+    (4,3,3,'2024-03-08','2024-09-07'),
+    (5,4,1,'2024-04-10','2025-04-09');
+
+
+-- Insert the sample membership payments.
+INSERT INTO payments
+    (member_id, amount, payment_date, payment_mode)
+VALUES
+    (1,8000,'2024-01-10','UPI'),
+    (2,2500,'2024-02-15','Card'),
+    (3,1000,'2024-03-01','Cash'),
+    (4,4500,'2024-03-08','UPI'),
+    (5,8000,'2024-04-10','Card');
+
+
+-- =====================================================
+-- PART 3: CREATING INDEXES
+-- =====================================================
+
+-- Index to help search members by city.
+CREATE INDEX idx_member_city
+ON members(city);
+
+-- Index to help search payments by payment date.
+CREATE INDEX idx_payment_date
+ON payments(payment_date);
+
+-- Index to help search memberships by member ID.
+CREATE INDEX idx_membership_member
+ON memberships(member_id);
+
+-- Index to help search memberships by trainer ID.
+CREATE INDEX idx_membership_trainer
+ON memberships(trainer_id);
+
+-- Index to help search attendance records by member ID.
+CREATE INDEX idx_attendance_member
+ON attendance(member_id);
+
+
+-- =====================================================
+-- PART 4: CREATING VIEWS
+-- =====================================================
+
+-- VIEW 1: MEMBER DETAILS
+-- Purpose: Display member, plan, trainer, and membership dates
+-- together in one result.
+
+CREATE VIEW view_member_details AS
+SELECT
+    m.member_id,
+    m.member_name,
+    mp.plan_name,
+    t.trainer_name,
+    ms.start_date,
+    ms.end_date
+FROM memberships ms
+
+-- Join memberships with the members table.
+JOIN members m
+    ON ms.member_id = m.member_id
+
+-- Join memberships with the membership plans table.
+JOIN membership_plans mp
+    ON ms.plan_id = mp.plan_id
+
+-- Join memberships with the trainers table.
+JOIN trainers t
+    ON ms.trainer_id = t.trainer_id;
+
+
+-- VIEW 2: TOTAL REVENUE
+-- Purpose: Calculate the total amount collected from payments.
+
+CREATE VIEW view_total_revenue AS
+SELECT
+    SUM(amount) AS total_revenue
+FROM payments;
+
+
+-- VIEW 3: TRAINER-WISE MEMBER COUNT
+-- Purpose: Display the number of members assigned to each trainer.
+-- LEFT JOIN also includes trainers who have no memberships.
+
+CREATE VIEW view_trainer_members AS
+SELECT
+    t.trainer_name,
+    COUNT(ms.member_id) AS total_members
+FROM trainers t
+LEFT JOIN memberships ms
+    ON t.trainer_id = ms.trainer_id
+GROUP BY t.trainer_id, t.trainer_name;
+
+
+-- =====================================================
+-- PART 5: CREATING STORED PROCEDURES
+-- =====================================================
+
+-- PROCEDURE 1: MEMBER MEMBERSHIP DETAILS
+-- Purpose: Display membership details for a particular member.
+-- IN parameter p_member_id receives the member's ID.
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_member_details(
+    IN p_member_id INT
+)
+BEGIN
+    -- Retrieve the member's details from the view.
+    SELECT *
+    FROM view_member_details
+    WHERE member_id = p_member_id;
+END $$
+
+DELIMITER ;
+
+
+-- PROCEDURE 2: TOTAL REVENUE REPORT
+-- Purpose: Calculate the total revenue from all payments.
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_total_revenue()
+BEGIN
+    -- Add all payment amounts and display the total.
+    SELECT
+        SUM(amount) AS revenue
+    FROM payments;
+END $$
+
+DELIMITER ;
+
+
+-- PROCEDURE 3: ADD PAYMENT
+-- Purpose: Add a new payment for a member.
+-- The payment date is automatically set to today's date.
+-- The trigger created in Part 6 validates the payment amount.
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_add_payment(
+    IN p_member_id INT,       -- Member making the payment
+    IN p_amount DECIMAL(10,2), -- Amount to be paid
+    IN p_mode VARCHAR(10)      -- Payment method
+)
+BEGIN
+    -- Insert the new payment into the payments table.
+    INSERT INTO payments
+        (member_id, amount, payment_date, payment_mode)
+    VALUES
+        (p_member_id, p_amount, CURDATE(), p_mode);
+END $$
+
+DELIMITER ;
+
+
+-- =====================================================
+-- PART 6: CREATING TRIGGERS
+-- =====================================================
+
+-- TABLE: PAYMENT LOG
+-- Purpose: Maintain an audit record of inserted payments.
+
+CREATE TABLE payment_log (
+    log_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique log ID
+    member_id INT,                         -- Member who made the payment
+    amount DECIMAL(10,2),                  -- Amount recorded in the log
+    log_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Log creation time
+);
+
+
+-- TRIGGER 1: PAYMENT AUDIT LOG
+-- Purpose: Automatically record each new payment in payment_log.
+-- NEW refers to the values of the row being inserted.
+
+DELIMITER $$
+
+CREATE TRIGGER trg_payment_log
+AFTER INSERT ON payments
+FOR EACH ROW
+BEGIN
+    -- Copy the member ID and payment amount into the audit table.
+    INSERT INTO payment_log (member_id, amount)
+    VALUES (NEW.member_id, NEW.amount);
+END $$
+
+DELIMITER ;
+
+
+-- TRIGGER 2: VALIDATE PAYMENT AMOUNT
+-- Purpose: Prevent payments that are zero or negative.
+-- SIGNAL stops the insert and returns an error message.
+
+DELIMITER $$
+
+CREATE TRIGGER trg_validate_payment
+BEFORE INSERT ON payments
+FOR EACH ROW
+BEGIN
+    -- Check whether the payment amount is valid.
+    IF NEW.amount <= 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Payment amount must be greater than zero';
+    END IF;
+END $$
+
+DELIMITER ;
+
+
+-- =====================================================
+-- PART 7: SQL QUERY BANK
+-- =====================================================
+
+-- QUERY 1: DISPLAY ALL MEMBERS
+-- Purpose: Retrieve all records from the members table.
+
+SELECT *
+FROM members;
+# GYM MANAGEMENT SYSTEM – MYSQL PROJECT
+
+-- =====================================================
+-- PART 1: DATABASE AND TABLES CREATION
+-- =====================================================
+
+-- Delete the existing database if it already exists.
+-- WARNING: This deletes all existing data in this database.
+DROP DATABASE IF EXISTS gym_management_system;
+
+-- Create a new database for the Gym Management System.
+CREATE DATABASE gym_management_system;
+
+-- Select the database to use.
+USE gym_management_system;
+
+
+-- -----------------------------------------------------
+-- TABLE 1: MEMBERS
+-- Purpose: Store gym members' personal information.
+-- -----------------------------------------------------
+
+CREATE TABLE members (
+    member_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique ID for each member
+    member_name VARCHAR(100),                 -- Name of the member
+    gender VARCHAR(10),                       -- Gender of the member
+    phone VARCHAR(15),                        -- Contact number
+    city VARCHAR(50),                         -- City where the member lives
+    join_date DATE                            -- Date the member joined the gym
+);
+
+
+-- -----------------------------------------------------
+-- TABLE 2: TRAINERS
+-- Purpose: Store gym trainers' information.
+-- -----------------------------------------------------
+
+CREATE TABLE trainers (
+    trainer_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique ID for each trainer
+    trainer_name VARCHAR(100),                 -- Name of the trainer
+    specialization VARCHAR(100),               -- Trainer's area of expertise
+    phone VARCHAR(15)                          -- Trainer's contact number
+);
+
+
+-- -----------------------------------------------------
+-- TABLE 3: MEMBERSHIP PLANS
+-- Purpose: Store available gym membership plans and fees.
+-- -----------------------------------------------------
+
+CREATE TABLE membership_plans (
+    plan_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique ID for each plan
+    plan_name VARCHAR(50),                  -- Name of the plan
+    duration_months INT,                    -- Duration of the plan in months
+    fee DECIMAL(10,2)                       -- Membership fee
+);
+
+
+-- -----------------------------------------------------
+-- TABLE 4: MEMBERSHIPS
+-- Purpose: Connect members, plans, and trainers.
+-- -----------------------------------------------------
+
+CREATE TABLE memberships (
+    membership_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique membership ID
+    member_id INT,                                -- ID of the member
+    plan_id INT,                                  -- ID of the selected plan
+    trainer_id INT,                               -- ID of the assigned trainer
+    start_date DATE,                              -- Membership starting date
+    end_date DATE,                                -- Membership ending date
+
+    -- Connect the membership to an existing member.
+    FOREIGN KEY (member_id) REFERENCES members(member_id),
+
+    -- Connect the membership to an existing membership plan.
+    FOREIGN KEY (plan_id) REFERENCES membership_plans(plan_id),
+
+    -- Connect the membership to an existing trainer.
+    FOREIGN KEY (trainer_id) REFERENCES trainers(trainer_id)
+);
+
+
+-- -----------------------------------------------------
+-- TABLE 5: PAYMENTS
+-- Purpose: Store payments made by gym members.
+-- -----------------------------------------------------
+
+CREATE TABLE payments (
+    payment_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique payment ID
+    member_id INT,                             -- ID of the member making payment
+    amount DECIMAL(10,2),                      -- Amount paid by the member
+    payment_date DATE,                         -- Date of payment
+
+    -- Allow only Cash, UPI, or Card as payment methods.
+    payment_mode ENUM('Cash','UPI','Card'),
+
+    -- Connect the payment to an existing member.
+    FOREIGN KEY (member_id) REFERENCES members(member_id)
+);
+
+
+-- -----------------------------------------------------
+-- TABLE 6: ATTENDANCE
+-- Purpose: Record members' daily attendance.
+-- -----------------------------------------------------
+
+CREATE TABLE attendance (
+    attendance_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique attendance ID
+    member_id INT,                                -- ID of the member
+    attendance_date DATE,                         -- Date of attendance
+
+    -- Allow only Present or Absent as attendance status.
+    status ENUM('Present','Absent'),
+
+    -- Connect attendance records to an existing member.
+    FOREIGN KEY (member_id) REFERENCES members(member_id)
+);
+
+
+-- =====================================================
+-- PART 2: INSERTING SAMPLE DATA
+-- =====================================================
+
+-- Insert five sample members into the members table.
+INSERT INTO members
+    (member_name, gender, phone, city, join_date)
+VALUES
+    ('Rahul Sharma','Male','9876543210','Mumbai','2024-01-10'),
+    ('Priya Verma','Female','9123456789','Delhi','2024-02-15'),
+    ('Amit Patel','Male','9988776655','Ahmedabad','2024-03-01'),
+    ('Sneha Reddy','Female','8877665544','Hyderabad','2024-03-08'),
+    ('Vikram Singh','Male','7766554433','Mumbai','2024-04-10');
+
+
+-- Insert three sample trainers and their specializations.
+INSERT INTO trainers
+    (trainer_name, specialization, phone)
+VALUES
+    ('Rohit Kumar','Weight Training','9871111111'),
+    ('Neha Singh','Yoga','9872222222'),
+    ('Arjun Rao','Cardio Fitness','9873333333');
+
+
+-- Insert four membership plans with different durations and fees.
+INSERT INTO membership_plans
+    (plan_name, duration_months, fee)
+VALUES
+    ('Monthly',1,1000),
+    ('Quarterly',3,2500),
+    ('Half-Yearly',6,4500),
+    ('Yearly',12,8000);
+
+
+-- Assign membership plans and trainers to five members.
+INSERT INTO memberships
+    (member_id, plan_id, trainer_id, start_date, end_date)
+VALUES
+    (1,4,1,'2024-01-10','2025-01-09'),
+    (2,2,2,'2024-02-15','2024-05-14'),
+    (3,1,1,'2024-03-01','2024-03-31'),
+    (4,3,3,'2024-03-08','2024-09-07'),
+    (5,4,1,'2024-04-10','2025-04-09');
+
+
+-- Insert the sample membership payments.
+INSERT INTO payments
+    (member_id, amount, payment_date, payment_mode)
+VALUES
+    (1,8000,'2024-01-10','UPI'),
+    (2,2500,'2024-02-15','Card'),
+    (3,1000,'2024-03-01','Cash'),
+    (4,4500,'2024-03-08','UPI'),
+    (5,8000,'2024-04-10','Card');
+
+
+-- =====================================================
+-- PART 3: CREATING INDEXES
+-- =====================================================
+
+-- Index to help search members by city.
+CREATE INDEX idx_member_city
+ON members(city);
+
+-- Index to help search payments by payment date.
+CREATE INDEX idx_payment_date
+ON payments(payment_date);
+
+-- Index to help search memberships by member ID.
+CREATE INDEX idx_membership_member
+ON memberships(member_id);
+
+-- Index to help search memberships by trainer ID.
+CREATE INDEX idx_membership_trainer
+ON memberships(trainer_id);
+
+-- Index to help search attendance records by member ID.
+CREATE INDEX idx_attendance_member
+ON attendance(member_id);
+
+
+-- =====================================================
+-- PART 4: CREATING VIEWS
+-- =====================================================
+
+-- VIEW 1: MEMBER DETAILS
+-- Purpose: Display member, plan, trainer, and membership dates
+-- together in one result.
+
+CREATE VIEW view_member_details AS
+SELECT
+    m.member_id,
+    m.member_name,
+    mp.plan_name,
+    t.trainer_name,
+    ms.start_date,
+    ms.end_date
+FROM memberships ms
+
+-- Join memberships with the members table.
+JOIN members m
+    ON ms.member_id = m.member_id
+
+-- Join memberships with the membership plans table.
+JOIN membership_plans mp
+    ON ms.plan_id = mp.plan_id
+
+-- Join memberships with the trainers table.
+JOIN trainers t
+    ON ms.trainer_id = t.trainer_id;
+
+
+-- VIEW 2: TOTAL REVENUE
+-- Purpose: Calculate the total amount collected from payments.
+
+CREATE VIEW view_total_revenue AS
+SELECT
+    SUM(amount) AS total_revenue
+FROM payments;
+
+
+-- VIEW 3: TRAINER-WISE MEMBER COUNT
+-- Purpose: Display the number of members assigned to each trainer.
+-- LEFT JOIN also includes trainers who have no memberships.
+
+CREATE VIEW view_trainer_members AS
+SELECT
+    t.trainer_name,
+    COUNT(ms.member_id) AS total_members
+FROM trainers t
+LEFT JOIN memberships ms
+    ON t.trainer_id = ms.trainer_id
+GROUP BY t.trainer_id, t.trainer_name;
+
+
+-- =====================================================
+-- PART 5: CREATING STORED PROCEDURES
+-- =====================================================
+
+-- PROCEDURE 1: MEMBER MEMBERSHIP DETAILS
+-- Purpose: Display membership details for a particular member.
+-- IN parameter p_member_id receives the member's ID.
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_member_details(
+    IN p_member_id INT
+)
+BEGIN
+    -- Retrieve the member's details from the view.
+    SELECT *
+    FROM view_member_details
+    WHERE member_id = p_member_id;
+END $$
+
+DELIMITER ;
+
+
+-- PROCEDURE 2: TOTAL REVENUE REPORT
+-- Purpose: Calculate the total revenue from all payments.
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_total_revenue()
+BEGIN
+    -- Add all payment amounts and display the total.
+    SELECT
+        SUM(amount) AS revenue
+    FROM payments;
+END $$
+
+DELIMITER ;
+
+
+-- PROCEDURE 3: ADD PAYMENT
+-- Purpose: Add a new payment for a member.
+-- The payment date is automatically set to today's date.
+-- The trigger created in Part 6 validates the payment amount.
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_add_payment(
+    IN p_member_id INT,       -- Member making the payment
+    IN p_amount DECIMAL(10,2), -- Amount to be paid
+    IN p_mode VARCHAR(10)      -- Payment method
+)
+BEGIN
+    -- Insert the new payment into the payments table.
+    INSERT INTO payments
+        (member_id, amount, payment_date, payment_mode)
+    VALUES
+        (p_member_id, p_amount, CURDATE(), p_mode);
+END $$
+
+DELIMITER ;
+
+
+-- =====================================================
+-- PART 6: CREATING TRIGGERS
+-- =====================================================
+
+-- TABLE: PAYMENT LOG
+-- Purpose: Maintain an audit record of inserted payments.
+
+CREATE TABLE payment_log (
+    log_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique log ID
+    member_id INT,                         -- Member who made the payment
+    amount DECIMAL(10,2),                  -- Amount recorded in the log
+    log_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Log creation time
+);
+
+
+-- TRIGGER 1: PAYMENT AUDIT LOG
+-- Purpose: Automatically record each new payment in payment_log.
+-- NEW refers to the values of the row being inserted.
+
+DELIMITER $$
+
+CREATE TRIGGER trg_payment_log
+AFTER INSERT ON payments
+FOR EACH ROW
+BEGIN
+    -- Copy the member ID and payment amount into the audit table.
+    INSERT INTO payment_log (member_id, amount)
+    VALUES (NEW.member_id, NEW.amount);
+END $$
+
+DELIMITER ;
+
+
+-- TRIGGER 2: VALIDATE PAYMENT AMOUNT
+-- Purpose: Prevent payments that are zero or negative.
+-- SIGNAL stops the insert and returns an error message.
+
+DELIMITER $$
+
+CREATE TRIGGER trg_validate_payment
+BEFORE INSERT ON payments
+FOR EACH ROW
+BEGIN
+    -- Check whether the payment amount is valid.
+    IF NEW.amount <= 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Payment amount must be greater than zero';
+    END IF;
+END $$
+
+DELIMITER ;
+
+
+-- =====================================================
+-- PART 7: SQL QUERY BANK
+-- =====================================================
+
+-- QUERY 1: DISPLAY ALL MEMBERS
+-- Purpose: Retrieve all records from the members table.
+
+SELECT *
+FROM members;
+
+# GYM MANAGEMENT SYSTEM – MYSQL PROJECT
+
+-- =====================================================
+-- PART 1: DATABASE AND TABLES CREATION
+-- =====================================================
+
+-- Delete the existing database if it already exists.
+-- WARNING: This deletes all existing data in this database.
+DROP DATABASE IF EXISTS gym_management_system;
+
+-- Create a new database for the Gym Management System.
+CREATE DATABASE gym_management_system;
+
+-- Select the database to use.
+USE gym_management_system;
+
+
+-- -----------------------------------------------------
+-- TABLE 1: MEMBERS
+-- Purpose: Store gym members' personal information.
+-- -----------------------------------------------------
+
+CREATE TABLE members (
+    member_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique ID for each member
+    member_name VARCHAR(100),                 -- Name of the member
+    gender VARCHAR(10),                       -- Gender of the member
+    phone VARCHAR(15),                        -- Contact number
+    city VARCHAR(50),                         -- City where the member lives
+    join_date DATE                            -- Date the member joined the gym
+);
+
+
+-- -----------------------------------------------------
+-- TABLE 2: TRAINERS
+-- Purpose: Store gym trainers' information.
+-- -----------------------------------------------------
+
+CREATE TABLE trainers (
+    trainer_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique ID for each trainer
+    trainer_name VARCHAR(100),                 -- Name of the trainer
+    specialization VARCHAR(100),               -- Trainer's area of expertise
+    phone VARCHAR(15)                          -- Trainer's contact number
+);
+
+
+-- -----------------------------------------------------
+-- TABLE 3: MEMBERSHIP PLANS
+-- Purpose: Store available gym membership plans and fees.
+-- -----------------------------------------------------
+
+CREATE TABLE membership_plans (
+    plan_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique ID for each plan
+    plan_name VARCHAR(50),                  -- Name of the plan
+    duration_months INT,                    -- Duration of the plan in months
+    fee DECIMAL(10,2)                       -- Membership fee
+);
+
+
+-- -----------------------------------------------------
+-- TABLE 4: MEMBERSHIPS
+-- Purpose: Connect members, plans, and trainers.
+-- -----------------------------------------------------
+
+CREATE TABLE memberships (
+    membership_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique membership ID
+    member_id INT,                                -- ID of the member
+    plan_id INT,                                  -- ID of the selected plan
+    trainer_id INT,                               -- ID of the assigned trainer
+    start_date DATE,                              -- Membership starting date
+    end_date DATE,                                -- Membership ending date
+
+    -- Connect the membership to an existing member.
+    FOREIGN KEY (member_id) REFERENCES members(member_id),
+
+    -- Connect the membership to an existing membership plan.
+    FOREIGN KEY (plan_id) REFERENCES membership_plans(plan_id),
+
+    -- Connect the membership to an existing trainer.
+    FOREIGN KEY (trainer_id) REFERENCES trainers(trainer_id)
+);
+
+
+-- -----------------------------------------------------
+-- TABLE 5: PAYMENTS
+-- Purpose: Store payments made by gym members.
+-- -----------------------------------------------------
+
+CREATE TABLE payments (
+    payment_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique payment ID
+    member_id INT,                             -- ID of the member making payment
+    amount DECIMAL(10,2),                      -- Amount paid by the member
+    payment_date DATE,                         -- Date of payment
+
+    -- Allow only Cash, UPI, or Card as payment methods.
+    payment_mode ENUM('Cash','UPI','Card'),
+
+    -- Connect the payment to an existing member.
+    FOREIGN KEY (member_id) REFERENCES members(member_id)
+);
+
+
+-- -----------------------------------------------------
+-- TABLE 6: ATTENDANCE
+-- Purpose: Record members' daily attendance.
+-- -----------------------------------------------------
+
+CREATE TABLE attendance (
+    attendance_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique attendance ID
+    member_id INT,                                -- ID of the member
+    attendance_date DATE,                         -- Date of attendance
+
+    -- Allow only Present or Absent as attendance status.
+    status ENUM('Present','Absent'),
+
+    -- Connect attendance records to an existing member.
+    FOREIGN KEY (member_id) REFERENCES members(member_id)
+);
+
+
+-- =====================================================
+-- PART 2: INSERTING SAMPLE DATA
+-- =====================================================
+
+-- Insert five sample members into the members table.
+INSERT INTO members
+    (member_name, gender, phone, city, join_date)
+VALUES
+    ('Rahul Sharma','Male','9876543210','Mumbai','2024-01-10'),
+    ('Priya Verma','Female','9123456789','Delhi','2024-02-15'),
+    ('Amit Patel','Male','9988776655','Ahmedabad','2024-03-01'),
+    ('Sneha Reddy','Female','8877665544','Hyderabad','2024-03-08'),
+    ('Vikram Singh','Male','7766554433','Mumbai','2024-04-10');
+
+
+-- Insert three sample trainers and their specializations.
+INSERT INTO trainers
+    (trainer_name, specialization, phone)
+VALUES
+    ('Rohit Kumar','Weight Training','9871111111'),
+    ('Neha Singh','Yoga','9872222222'),
+    ('Arjun Rao','Cardio Fitness','9873333333');
+
+
+-- Insert four membership plans with different durations and fees.
+INSERT INTO membership_plans
+    (plan_name, duration_months, fee)
+VALUES
+    ('Monthly',1,1000),
+    ('Quarterly',3,2500),
+    ('Half-Yearly',6,4500),
+    ('Yearly',12,8000);
+
+
+-- Assign membership plans and trainers to five members.
+INSERT INTO memberships
+    (member_id, plan_id, trainer_id, start_date, end_date)
+VALUES
+    (1,4,1,'2024-01-10','2025-01-09'),
+    (2,2,2,'2024-02-15','2024-05-14'),
+    (3,1,1,'2024-03-01','2024-03-31'),
+    (4,3,3,'2024-03-08','2024-09-07'),
+    (5,4,1,'2024-04-10','2025-04-09');
+
+
+-- Insert the sample membership payments.
+INSERT INTO payments
+    (member_id, amount, payment_date, payment_mode)
+VALUES
+    (1,8000,'2024-01-10','UPI'),
+    (2,2500,'2024-02-15','Card'),
+    (3,1000,'2024-03-01','Cash'),
+    (4,4500,'2024-03-08','UPI'),
+    (5,8000,'2024-04-10','Card');
+
+
+-- =====================================================
+-- PART 3: CREATING INDEXES
+-- =====================================================
+
+-- Index to help search members by city.
+CREATE INDEX idx_member_city
+ON members(city);
+
+-- Index to help search payments by payment date.
+CREATE INDEX idx_payment_date
+ON payments(payment_date);
+
+-- Index to help search memberships by member ID.
+CREATE INDEX idx_membership_member
+ON memberships(member_id);
+
+-- Index to help search memberships by trainer ID.
+CREATE INDEX idx_membership_trainer
+ON memberships(trainer_id);
+
+-- Index to help search attendance records by member ID.
+CREATE INDEX idx_attendance_member
+ON attendance(member_id);
+
+
+-- =====================================================
+-- PART 4: CREATING VIEWS
+-- =====================================================
+
+-- VIEW 1: MEMBER DETAILS
+-- Purpose: Display member, plan, trainer, and membership dates
+-- together in one result.
+
+CREATE VIEW view_member_details AS
+SELECT
+    m.member_id,
+    m.member_name,
+    mp.plan_name,
+    t.trainer_name,
+    ms.start_date,
+    ms.end_date
+FROM memberships ms
+
+-- Join memberships with the members table.
+JOIN members m
+    ON ms.member_id = m.member_id
+
+-- Join memberships with the membership plans table.
+JOIN membership_plans mp
+    ON ms.plan_id = mp.plan_id
+
+-- Join memberships with the trainers table.
+JOIN trainers t
+    ON ms.trainer_id = t.trainer_id;
+
+
+-- VIEW 2: TOTAL REVENUE
+-- Purpose: Calculate the total amount collected from payments.
+
+CREATE VIEW view_total_revenue AS
+SELECT
+    SUM(amount) AS total_revenue
+FROM payments;
+
+
+-- VIEW 3: TRAINER-WISE MEMBER COUNT
+-- Purpose: Display the number of members assigned to each trainer.
+-- LEFT JOIN also includes trainers who have no memberships.
+
+CREATE VIEW view_trainer_members AS
+SELECT
+    t.trainer_name,
+    COUNT(ms.member_id) AS total_members
+FROM trainers t
+LEFT JOIN memberships ms
+    ON t.trainer_id = ms.trainer_id
+GROUP BY t.trainer_id, t.trainer_name;
+
+
+-- =====================================================
+-- PART 5: CREATING STORED PROCEDURES
+-- =====================================================
+
+-- PROCEDURE 1: MEMBER MEMBERSHIP DETAILS
+-- Purpose: Display membership details for a particular member.
+-- IN parameter p_member_id receives the member's ID.
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_member_details(
+    IN p_member_id INT
+)
+BEGIN
+    -- Retrieve the member's details from the view.
+    SELECT *
+    FROM view_member_details
+    WHERE member_id = p_member_id;
+END $$
+
+DELIMITER ;
+
+
+-- PROCEDURE 2: TOTAL REVENUE REPORT
+-- Purpose: Calculate the total revenue from all payments.
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_total_revenue()
+BEGIN
+    -- Add all payment amounts and display the total.
+    SELECT
+        SUM(amount) AS revenue
+    FROM payments;
+END $$
+
+DELIMITER ;
+
+
+-- PROCEDURE 3: ADD PAYMENT
+-- Purpose: Add a new payment for a member.
+-- The payment date is automatically set to today's date.
+-- The trigger created in Part 6 validates the payment amount.
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_add_payment(
+    IN p_member_id INT,       -- Member making the payment
+    IN p_amount DECIMAL(10,2), -- Amount to be paid
+    IN p_mode VARCHAR(10)      -- Payment method
+)
+BEGIN
+    -- Insert the new payment into the payments table.
+    INSERT INTO payments
+        (member_id, amount, payment_date, payment_mode)
+    VALUES
+        (p_member_id, p_amount, CURDATE(), p_mode);
+END $$
+
+DELIMITER ;
+
+
+-- =====================================================
+-- PART 6: CREATING TRIGGERS
+-- =====================================================
+
+-- TABLE: PAYMENT LOG
+-- Purpose: Maintain an audit record of inserted payments.
+
+CREATE TABLE payment_log (
+    log_id INT AUTO_INCREMENT PRIMARY KEY, -- Unique log ID
+    member_id INT,                         -- Member who made the payment
+    amount DECIMAL(10,2),                  -- Amount recorded in the log
+    log_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Log creation time
+);
+
+
+-- TRIGGER 1: PAYMENT AUDIT LOG
+-- Purpose: Automatically record each new payment in payment_log.
+-- NEW refers to the values of the row being inserted.
+
+DELIMITER $$
+
+CREATE TRIGGER trg_payment_log
+AFTER INSERT ON payments
+FOR EACH ROW
+BEGIN
+    -- Copy the member ID and payment amount into the audit table.
+    INSERT INTO payment_log (member_id, amount)
+    VALUES (NEW.member_id, NEW.amount);
+END $$
+
+DELIMITER ;
+
+
+-- TRIGGER 2: VALIDATE PAYMENT AMOUNT
+-- Purpose: Prevent payments that are zero or negative.
+-- SIGNAL stops the insert and returns an error message.
+
+DELIMITER $$
+
+CREATE TRIGGER trg_validate_payment
+BEFORE INSERT ON payments
+FOR EACH ROW
+BEGIN
+    -- Check whether the payment amount is valid.
+    IF NEW.amount <= 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Payment amount must be greater than zero';
+    END IF;
+END $$
+
+DELIMITER ;
+
+
+-- =====================================================
+-- PART 7: SQL QUERY BANK
+-- =====================================================
+
+-- QUERY 1: DISPLAY ALL MEMBERS
+-- Purpose: Retrieve all records from the members table.
+
+SELECT *
+FROM members;
+
++-----------+--------------+--------+------------+-----------+------------+
+| member_id | member_name  | gender | phone      | city      | join_date  |
++-----------+--------------+--------+------------+-----------+------------+
+|         1 | Rahul Sharma | Male   | 9876543210 | Mumbai    | 2024-01-10 |
+|         2 | Priya Verma  | Female | 9123456789 | Delhi     | 2024-02-15 |
+|         3 | Amit Patel   | Male   | 9988776655 | Ahmedabad | 2024-03-01 |
+|         4 | Sneha Reddy  | Female | 8877665544 | Hyderabad | 2024-03-08 |
+|         5 | Vikram Singh | Male   | 7766554433 | Mumbai    | 2024-04-10 |
++-----------+--------------+--------+------------+-----------+------------+
+5 rows in set (0.00 sec)
+
+-- QUERY 2: DISPLAY ALL TRAINERS
+-- Purpose: Retrieve all records from the trainers table.
+
+SELECT *
+FROM trainers;
+
++------------+--------------+-----------------+------------+
+| trainer_id | trainer_name | specialization  | phone      |
++------------+--------------+-----------------+------------+
+|          1 | Rohit Kumar  | Weight Training | 9871111111 |
+|          2 | Neha Singh   | Yoga            | 9872222222 |
+|          3 | Arjun Rao    | Cardio Fitness  | 9873333333 |
++------------+--------------+-----------------+------------+
+3 rows in set (0.00 sec)
+
+
+-- QUERY 3: DISPLAY MEMBERS WITH THEIR TRAINER NAMES
+-- Purpose: Show which trainer is assigned to each member.
+
+SELECT
+    m.member_name,
+    t.trainer_name
+FROM memberships ms
+JOIN members m
+    ON ms.member_id = m.member_id
+JOIN trainers t
+    ON ms.trainer_id = t.trainer_id;
+
++--------------+--------------+
+| member_name  | trainer_name |
++--------------+--------------+
+| Rahul Sharma | Rohit Kumar  |
+| Amit Patel   | Rohit Kumar  |
+| Vikram Singh | Rohit Kumar  |
+| Priya Verma  | Neha Singh   |
+| Sneha Reddy  | Arjun Rao    |
++--------------+--------------+
+5 rows in set (0.00 sec)
+
+
+-- QUERY 4: CALCULATE TOTAL REVENUE
+-- Purpose: Add all payment amounts to find total revenue.
+
+SELECT
+    SUM(amount) AS revenue
+FROM payments;
+
++----------+
+| revenue  |
++----------+
+| 24000.00 |
++----------+
+1 row in set (0.00 sec)
+
+
+
+-- QUERY 5: COUNT MEMBERS IN EACH CITY
+-- Purpose: Display each city and the number of members living there.
+
+SELECT
+    city,
+    COUNT(*) AS total_members
+FROM members
+GROUP BY city;
++-----------+---------------+
+| city      | total_members |
++-----------+---------------+
+| Ahmedabad |             1 |
+| Delhi     |             1 |
+| Hyderabad |             1 |
+| Mumbai    |             2 |
++-----------+---------------+
+4 rows in set (0.00 sec)
+
+-- QUERY 6: FIND THE TRAINER HANDLING THE MOST MEMBERS
+-- Purpose: Count memberships for each trainer and sort from
+-- highest to lowest. The first row has the highest count.
+
+SELECT
+    t.trainer_name,
+    COUNT(*) AS total_members
+FROM memberships ms
+JOIN trainers t
+    ON ms.trainer_id = t.trainer_id
+GROUP BY t.trainer_id, t.trainer_name
+ORDER BY total_members DESC;
++--------------+---------------+
+| trainer_name | total_members |
++--------------+---------------+
+| Rohit Kumar  |             3 |
+| Neha Singh   |             1 |
+| Arjun Rao    |             1 |
++--------------+---------------+
+3 rows in set (0.00 sec)
+
+-- QUERY 7: FIND MEMBERSHIPS EXPIRING WITHIN THE NEXT 30 DAYS
+-- Purpose: Find memberships ending between today and 30 days
+-- from today. Past expired memberships are excluded.
+
+SELECT *
+FROM memberships
+WHERE end_date BETWEEN CURDATE()
+                   AND DATE_ADD(CURDATE(), INTERVAL 30 DAY);
+
+
+-- QUERY 8: FIND THE HIGHEST PAYMENT
+-- Purpose: Return the largest amount recorded in payments.
+
+SELECT
+    MAX(amount) AS highest_payment
+FROM payments;
+
++-----------------+
+| highest_payment |
++-----------------+
+|         8000.00 |
++-----------------+
+1 row in set (0.00 sec)
+
+
+-- QUERY 9: CALCULATE THE AVERAGE MEMBERSHIP FEE
+-- Purpose: Calculate the average fee across all available plans.
+
+SELECT
+    AVG(fee) AS average_membership_fee
+FROM membership_plans;
++------------------------+
+| average_membership_fee |
++------------------------+
+|            4000.000000 |
++------------------------+
+1 row in set (0.00 sec)
+
+-- QUERY 10: DISPLAY MEMBERS ENROLLED IN THE YEARLY PLAN
+-- Purpose: Display the names of members whose plan is Yearly.
+-- Plan ID 4 refers to Yearly in the sample data.
+
+SELECT
+    m.member_name
+FROM memberships ms
+JOIN members m
+    ON ms.member_id = m.member_id
+WHERE ms.plan_id = 4;
++--------------+
+| member_name  |
++--------------+
+| Rahul Sharma |
+| Vikram Singh |
++--------------+
+2 rows in set (0.00 sec)
+
+-- =====================================================
+-- END OF GYM MANAGEMENT SYSTEM PROJECT
+-- =====================================================
+
+
